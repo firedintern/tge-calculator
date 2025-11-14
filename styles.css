@@ -120,7 +120,7 @@ h1 {
     font-weight: 700;
     color: #1a202c;
     margin-bottom: 12px;
-    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', 'Chalkboard', 'Marker Felt', 'TSCu_Comic', cursive;
     text-shadow: 0 0 20px rgba(102, 126, 234, 0.6),
                  0 0 40px rgba(102, 126, 234, 0.4),
                  0 0 60px rgba(102, 126, 234, 0.2);
@@ -497,7 +497,7 @@ input.error {
 
     h1 {
         font-size: 26px;
-        font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+        font-family: 'Comic Sans MS', 'Comic Sans', 'Chalkboard SE', 'Chalkboard', 'Marker Felt', 'TSCu_Comic', cursive;
     }
 
     .action-buttons {
