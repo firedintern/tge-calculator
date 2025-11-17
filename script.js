@@ -54,6 +54,68 @@ class TGECalculator {
 
         // Theme toggle
         document.getElementById('themeToggle').addEventListener('click', () => this.toggleDarkMode());
+
+        // Mobile-friendly tooltips (click to show/hide on touch devices)
+        this.initMobileTooltips();
+
+        // Chart responsiveness - redraw on window resize
+        this.initChartResize();
+    }
+
+    initChartResize() {
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                // Redraw chart if it's visible
+                const chartContainer = document.getElementById('chartContainer');
+                if (chartContainer && chartContainer.style.display !== 'none') {
+                    const formData = this.getFormData();
+                    if (formData) {
+                        this.createUnlockChart(
+                            formData.airdrop,
+                            formData.publicSale,
+                            formData.liquidity,
+                            formData.team,
+                            formData.other,
+                            formData.unlockedPercent
+                        );
+                    }
+                }
+            }, 250); // Debounce 250ms
+        });
+    }
+
+    initMobileTooltips() {
+        const tooltips = document.querySelectorAll('.tooltip-icon, .educational-tooltip');
+
+        tooltips.forEach(tooltip => {
+            // Add click handler for mobile
+            tooltip.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Toggle active class for mobile display
+                tooltip.classList.toggle('tooltip-active');
+
+                // Remove active class from other tooltips
+                tooltips.forEach(other => {
+                    if (other !== tooltip) {
+                        other.classList.remove('tooltip-active');
+                    }
+                });
+            });
+        });
+
+        // Close tooltips when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('tooltip-icon') &&
+                !e.target.classList.contains('educational-tooltip')) {
+                tooltips.forEach(tooltip => {
+                    tooltip.classList.remove('tooltip-active');
+                });
+            }
+        });
     }
 
     // Dark Mode
