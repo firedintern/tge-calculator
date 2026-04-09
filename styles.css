@@ -494,18 +494,48 @@ input.error {
 /* --- Results Section --- */
 .results-section {
     display: none;
-    opacity: 0;
-    transform: translateY(12px);
-    transition: opacity 0.4s var(--ease-out-expo), transform 0.4s var(--ease-out-expo);
 }
 
 .results-section.visible {
     display: block;
 }
 
-.results-section.revealed {
-    opacity: 1;
-    transform: translateY(0);
+/* Verdict rating — impact animation target */
+.verdict-rating {
+    transform-origin: left center;
+    will-change: transform, opacity;
+}
+
+/* Metric figures — slide-up animation target */
+.metric-figure {
+    will-change: transform, opacity;
+}
+
+/* Risk fill — extend animation target */
+.risk-fill {
+    will-change: width;
+}
+
+/* Button press feedback */
+.btn-calculate.firing {
+    transform: scale(0.97) translateY(1px);
+    transition: transform 0.08s ease-in;
+}
+
+/* Reduced motion: skip all kinetic animations */
+@media (prefers-reduced-motion: reduce) {
+    .verdict-rating,
+    .metric-figure,
+    .risk-fill {
+        will-change: auto;
+        transition: none !important;
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+    }
+    .btn-calculate.firing {
+        transform: none;
+    }
 }
 
 /* Verdict block — the centerpiece */
@@ -594,9 +624,11 @@ input.error {
     background: var(--border-subtle);
     border: 1px solid var(--border-subtle);
     border-radius: 4px;
-    overflow: hidden;
     margin-bottom: var(--space-2xl);
 }
+
+.metrics-row .metric:first-child { border-radius: 3px 0 0 3px; }
+.metrics-row .metric:last-child  { border-radius: 0 3px 3px 0; }
 
 .metric {
     background: var(--bg-surface);
@@ -624,7 +656,12 @@ input.error {
     display: flex;
     align-items: flex-start;
     gap: var(--space-xs);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+}
+
+.metric-name .info-btn {
+    flex-shrink: 0;
+    margin-top: 1px;
 }
 
 /* --- Risk Section --- */
@@ -892,26 +929,50 @@ input.error {
     color: var(--border-strong);
 }
 
-/* --- Tooltip popup --- */
-.tooltip-popup {
-    position: fixed;
-    z-index: 9999;
+/* --- Tooltip popup (unused — replaced by CSS tooltips) --- */
+.tooltip-popup { display: none; }
+
+/* --- CSS Tooltips on .info-btn --- */
+.info-btn {
+    position: relative;
+}
+
+.info-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
     background: oklch(22% 0.015 60);
     border: 1px solid var(--border-strong);
     color: var(--text-primary);
-    font-size: var(--text-sm);
-    line-height: 1.55;
-    padding: var(--space-sm) var(--space-md);
+    font-size: 12px;
+    font-weight: 400;
+    font-family: 'Mada', sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.5;
+    padding: 7px 11px;
     border-radius: 4px;
-    max-width: 260px;
+    width: max-content;
+    max-width: 240px;
+    white-space: normal;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.15s;
-    box-shadow: 0 8px 24px oklch(5% 0 0 / 0.6);
+    z-index: 9999;
+    box-shadow: 0 6px 20px oklch(5% 0 0 / 0.7);
 }
 
-.tooltip-popup.visible {
+.info-btn:hover::after,
+.info-btn:focus-visible::after {
     opacity: 1;
+}
+
+/* Flip below when near top of viewport */
+.info-btn.tip-below::after {
+    bottom: auto;
+    top: calc(100% + 8px);
 }
 
 /* --- Toast --- */

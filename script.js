@@ -8,8 +8,6 @@ class TGECalculator {
         this.advancedToggle = document.getElementById('advancedToggle');
         this.advancedSection = document.getElementById('advancedSection');
         this.savedCalculations = this.loadComparisons();
-        this.tooltipEl = document.getElementById('tooltipPopup');
-        this._tooltipHideTimer = null;
 
         this.init();
         this.loadFromURL();
@@ -22,6 +20,10 @@ class TGECalculator {
         this.form.addEventListener('submit', (e) => {
             e.preventDefault();
             if (this.validateForm()) {
+                // Button press feedback
+                const btn = document.getElementById('calculateBtn');
+                btn.classList.add('firing');
+                setTimeout(() => btn.classList.remove('firing'), 160);
                 this.calculatePressure();
             }
         });
@@ -47,9 +49,6 @@ class TGECalculator {
         document.getElementById('clearBtn').addEventListener('click', () => this.clearForm());
         document.getElementById('exportBtn').addEventListener('click', () => this.exportToPNG());
         document.getElementById('compareBtn').addEventListener('click', () => this.addToComparison());
-
-        // Tooltip system
-        this.initTooltips();
 
         // Chart resize
         this.initChartResize();
@@ -179,39 +178,14 @@ class TGECalculator {
         // Description
         const description = this.buildDescription(verdict, effectivePressure, unlockedPercent, airdrop, publicSale, team, liquidity, fdv, hasBreakdown);
 
-        // Update DOM
+        // Update DOM — set content before reveal
         const verdictBlock = document.getElementById('verdictBlock');
         verdictBlock.className = `verdict-block ${verdictClass}`;
 
         document.getElementById('verdictRating').textContent = verdict;
         document.getElementById('verdictDescription').textContent = description;
-
-        if (hasBreakdown) {
-            document.getElementById('verdictPressureLine').textContent =
-                `Weighted pressure: ${effectivePressure.toFixed(1)}%`;
-        } else {
-            document.getElementById('verdictPressureLine').textContent = '';
-        }
-
-        // Animate metrics
-        this.animateValue('dollarAmount', 0, potentialSell, 900, true);
-        this.animateValue('circulatingPercent', 0, unlockedPercent, 900, false, '%');
-        this.animateValue('initialMcap', 0, initialMcap, 900, true);
-        this.animateValue('mcfdvRatio', 0, mcfdvRatio, 900, false, '%');
-
-        // Risk bars
-        setTimeout(() => {
-            document.getElementById('dumpRiskBar').style.width    = `${dumpRisk}%`;
-            document.getElementById('dilutionRiskBar').style.width= `${dilutionRisk}%`;
-            document.getElementById('liquidityBar').style.width   = `${liquidityScore}%`;
-
-            document.getElementById('dumpRiskValue').textContent    = `${dumpRisk.toFixed(0)}%`;
-            document.getElementById('dilutionRiskValue').textContent= `${dilutionRisk.toFixed(0)}%`;
-            document.getElementById('liquidityValue').textContent   = `${liquidityScore.toFixed(0)}%`;
-        }, 120);
-
-        // Chart
-        this.createUnlockChart(airdrop, publicSale, liquidity, team, other);
+        document.getElementById('verdictPressureLine').textContent =
+            hasBreakdown ? `Weighted pressure: ${effectivePressure.toFixed(1)}%` : '';
 
         // Price context
         const priceContext = document.getElementById('priceContext');
@@ -226,8 +200,15 @@ class TGECalculator {
             priceContext.classList.remove('show');
         }
 
-        // Show results
-        this.showResults();
+        // Chart
+        this.createUnlockChart(airdrop, publicSale, liquidity, team, other);
+
+        // Show section, then fire the kinetic sequence
+        this.showResults(() => {
+            this.animateVerdict(verdictClass);
+            this.animateMetrics(potentialSell, unlockedPercent, initialMcap, mcfdvRatio);
+            this.animateRiskBars(dumpRisk, dilutionRisk, liquidityScore);
+        });
 
         // Auto-save
         this.autoSave();
@@ -262,36 +243,150 @@ class TGECalculator {
         return parts.join(' ');
     }
 
-    showResults() {
+    showResults(onVisible) {
         const el = this.resultsSection;
-        el.style.display = 'block';
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        // Force reflow before adding class
+        el.style.display = 'block';
+        el.classList.add('visible');
         void el.offsetHeight;
 
-        el.classList.add('visible');
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                el.classList.add('revealed');
-            });
-        });
+        if (reduced) {
+            onVisible?.();
+            el.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+            return;
+        }
 
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // Small delay lets the scroll settle before the impact hits
+        setTimeout(() => onVisible?.(), 180);
     }
 
-    // ─── Animation ────────────────────────────────────────────
+    // ─── Kinetic sequence ─────────────────────────────────────
 
-    animateValue(id, start, end, duration, isCurrency = false, suffix = '') {
-        const el = document.getElementById(id);
-        if (!el) return;
+    animateVerdict(verdictClass) {
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const ratingEl = document.getElementById('verdictRating');
+        const blockEl  = document.getElementById('verdictBlock');
+        const descEl   = document.getElementById('verdictDescription');
+        const lineEl   = document.getElementById('verdictPressureLine');
 
+        if (reduced) return;
+
+        // 1. Flash the block — brief color burst then settle
+        blockEl.animate([
+            { filter: 'brightness(2.2)', offset: 0 },
+            { filter: 'brightness(1)',   offset: 0.25 },
+            { filter: 'brightness(1)',   offset: 1 }
+        ], { duration: 500, easing: 'ease-out', fill: 'none' });
+
+        // 2. Verdict text slams down from oversized
+        ratingEl.animate([
+            { transform: 'scale(1.55) translateY(-6px)', opacity: 0,   offset: 0 },
+            { transform: 'scale(1.04) translateY(2px)',  opacity: 1,   offset: 0.45 },
+            { transform: 'scale(0.99) translateY(0px)',  opacity: 1,   offset: 0.65 },
+            { transform: 'scale(1)    translateY(0)',    opacity: 1,   offset: 1 }
+        ], {
+            duration: 480,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'backwards'
+        });
+
+        // 3. Description fades up after the slam
+        descEl.animate([
+            { opacity: 0, transform: 'translateY(6px)' },
+            { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 340, delay: 260, easing: 'ease-out', fill: 'backwards' });
+
+        lineEl.animate([
+            { opacity: 0, transform: 'translateY(4px)' },
+            { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 280, delay: 360, easing: 'ease-out', fill: 'backwards' });
+    }
+
+    animateMetrics(potentialSell, unlockedPercent, initialMcap, mcfdvRatio) {
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const metrics = [
+            { id: 'dollarAmount',      end: potentialSell,   isCurrency: true,  suffix: '' },
+            { id: 'circulatingPercent',end: unlockedPercent, isCurrency: false, suffix: '%' },
+            { id: 'initialMcap',       end: initialMcap,     isCurrency: true,  suffix: '' },
+            { id: 'mcfdvRatio',        end: mcfdvRatio,      isCurrency: false, suffix: '%' },
+        ];
+
+        metrics.forEach(({ id, end, isCurrency, suffix }, i) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const delay = i * 80; // stagger: 0, 80, 160, 240ms
+
+            if (!reduced) {
+                // Slide up entrance
+                el.animate([
+                    { opacity: 0, transform: 'translateY(10px)' },
+                    { opacity: 1, transform: 'translateY(0)' }
+                ], {
+                    duration: 320,
+                    delay,
+                    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                    fill: 'backwards'
+                });
+            }
+
+            // Count up — starts after entrance delay
+            setTimeout(() => {
+                this.countUp(el, 0, end, 800, isCurrency, suffix);
+            }, reduced ? 0 : delay + 60);
+        });
+    }
+
+    animateRiskBars(dumpRisk, dilutionRisk, liquidityScore) {
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const bars = [
+            { barId: 'dumpRiskBar',    valId: 'dumpRiskValue',    pct: dumpRisk,      delay: 320 },
+            { barId: 'dilutionRiskBar',valId: 'dilutionRiskValue',pct: dilutionRisk,  delay: 420 },
+            { barId: 'liquidityBar',   valId: 'liquidityValue',   pct: liquidityScore,delay: 520 },
+        ];
+
+        bars.forEach(({ barId, valId, pct, delay }) => {
+            const bar = document.getElementById(barId);
+            const val = document.getElementById(valId);
+            if (!bar || !val) return;
+
+            const run = () => {
+                val.textContent = `${pct.toFixed(0)}%`;
+                if (reduced) {
+                    bar.style.width = `${pct}%`;
+                    return;
+                }
+                // Spring-like: overshoot slightly then settle
+                bar.animate([
+                    { width: '0%',               offset: 0 },
+                    { width: `${pct * 1.06}%`,   offset: 0.7 },
+                    { width: `${pct * 0.98}%`,   offset: 0.85 },
+                    { width: `${pct}%`,          offset: 1 }
+                ], {
+                    duration: 700,
+                    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                    fill: 'forwards'
+                });
+            };
+
+            reduced ? run() : setTimeout(run, delay);
+        });
+    }
+
+    // ─── Number counter ───────────────────────────────────────
+
+    countUp(el, start, end, duration, isCurrency = false, suffix = '') {
         const startTime = performance.now();
 
         const tick = (now) => {
             const elapsed = now - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            // Ease out quart
-            const eased = 1 - Math.pow(1 - progress, 4);
+            const eased = 1 - Math.pow(1 - progress, 4); // ease-out-quart
             const current = start + (end - start) * eased;
 
             el.textContent = isCurrency
@@ -386,66 +481,6 @@ class TGECalculator {
                 }
             }, 200);
         });
-    }
-
-    // ─── Tooltips ─────────────────────────────────────────────
-
-    initTooltips() {
-        document.addEventListener('mouseover', (e) => {
-            const btn = e.target.closest('.info-btn[data-tooltip]');
-            if (btn) this.showTooltip(btn);
-        });
-
-        document.addEventListener('mouseout', (e) => {
-            const btn = e.target.closest('.info-btn[data-tooltip]');
-            if (btn) this.hideTooltip();
-        });
-
-        // Click support for touch devices
-        document.addEventListener('click', (e) => {
-            const btn = e.target.closest('.info-btn[data-tooltip]');
-            if (btn) {
-                e.stopPropagation();
-                if (this.tooltipEl.classList.contains('visible') && this._activeTooltipBtn === btn) {
-                    this.hideTooltip();
-                } else {
-                    this.showTooltip(btn);
-                }
-            } else {
-                this.hideTooltip();
-            }
-        });
-    }
-
-    showTooltip(btn) {
-        clearTimeout(this._tooltipHideTimer);
-        this._activeTooltipBtn = btn;
-        const text = btn.getAttribute('data-tooltip');
-        if (!text) return;
-
-        this.tooltipEl.textContent = text;
-
-        // Position anchored to button — place it, then make visible
-        const btnRect = btn.getBoundingClientRect();
-
-        // Start above the button; will flip below if too close to top
-        let top  = btnRect.top + window.scrollY - 8;
-        let left = btnRect.left + btnRect.width / 2;
-
-        // Use transform to center horizontally and shift up by 100%
-        this.tooltipEl.style.left = left + 'px';
-        this.tooltipEl.style.top  = top + 'px';
-        this.tooltipEl.style.transform = 'translate(-50%, -100%)';
-        this.tooltipEl.removeAttribute('aria-hidden');
-        this.tooltipEl.classList.add('visible');
-    }
-
-    hideTooltip() {
-        this._tooltipHideTimer = setTimeout(() => {
-            this.tooltipEl.classList.remove('visible');
-            this.tooltipEl.setAttribute('aria-hidden', 'true');
-            this._activeTooltipBtn = null;
-        }, 100);
     }
 
     // ─── Persistence ──────────────────────────────────────────
