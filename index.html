@@ -13,6 +13,9 @@
 </head>
 <body>
 
+    <!-- Vanta background canvas container -->
+    <div id="vanta-bg" aria-hidden="true"></div>
+
     <div class="page-wrap">
 
         <header class="site-header">
@@ -293,5 +296,41 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="script.js"></script>
+
+    <!-- Vanta.js dots background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.dots.min.js"></script>
+    <script>
+        (function () {
+            // Reduced motion: skip entirely
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            var effect = VANTA.DOTS({
+                el: '#vanta-bg',
+                backgroundColor: 0x1c1810,   // --bg-base (oklch 12% 0.010 60)
+                color:           0xd4850a,   // --amber
+                color2:          0x5a3a06,   // deep amber — secondary dots, stays subtle
+                size:            2.5,
+                spacing:         38,
+                showLines:       false,       // lines add noise; dots alone are sharper
+                mouseControls:   true,
+                touchControls:   false,
+                gyroControls:    false,
+                minHeight:       200,
+                minWidth:        200,
+                scale:           1.0,
+                scaleMobile:     0.8,
+            });
+
+            // Clean up on page hide to save GPU
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    effect && effect.pause && effect.pause();
+                } else {
+                    effect && effect.restart && effect.restart();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

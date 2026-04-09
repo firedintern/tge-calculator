@@ -8,8 +8,8 @@
 /* --- Tokens --- */
 :root {
     /* Base palette — warm-tinted darks, no pure black */
-    --bg-base:       oklch(12% 0.010 60);   /* deep warm charcoal */
-    --bg-surface:    oklch(16% 0.012 60);   /* slightly lighter for sections */
+    --bg-base:       oklch(12% 0.010 60);   /* deep warm charcoal — matches Vanta bg */
+    --bg-surface:    oklch(16% 0.012 60 / 0.92);   /* slight transparency — Vanta shows through subtly */
     --bg-raised:     oklch(19% 0.013 60);   /* cards, fields */
     --bg-input:      oklch(14% 0.010 60);
 
@@ -26,6 +26,11 @@
     --amber:         oklch(76% 0.160 65);
     --amber-dim:     oklch(60% 0.120 65);
     --amber-faint:   oklch(22% 0.040 65);
+
+    /* Info blue — for neutral informational UI elements */
+    --info:          oklch(68% 0.130 240);
+    --info-dim:      oklch(48% 0.090 240);
+    --info-faint:    oklch(18% 0.035 240);
 
     /* Verdicts */
     --verdict-high-bg:   oklch(14% 0.040 22);   /* deep crimson tint */
@@ -79,7 +84,7 @@ html {
 }
 
 body {
-    background: var(--bg-base);
+    background: var(--bg-base); /* fallback if Vanta fails to load */
     color: var(--text-primary);
     font-family: 'Mada', system-ui, sans-serif;
     font-size: var(--text-base);
@@ -88,16 +93,12 @@ body {
     overflow-x: hidden;
 }
 
-/* Subtle noise texture overlay */
-body::before {
-    content: '';
+/* Vanta background — full-page fixed, behind everything */
+#vanta-bg {
     position: fixed;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    background-size: 256px;
-    pointer-events: none;
     z-index: 0;
-    opacity: 0.6;
+    pointer-events: none;
 }
 
 /* --- Layout --- */
@@ -114,6 +115,18 @@ body::before {
     padding: var(--space-4xl) 0 var(--space-3xl);
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: var(--space-3xl);
+    position: relative;
+}
+
+/* Amber accent line at top of page */
+.site-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 48px;
+    height: 2px;
+    background: var(--amber);
 }
 
 .header-eyebrow {
@@ -220,7 +233,8 @@ input::placeholder {
 input:focus {
     outline: none;
     border-color: var(--amber-dim);
-    background: oklch(17% 0.014 60);
+    background: oklch(17% 0.018 62);
+    box-shadow: 0 0 0 3px oklch(76% 0.160 65 / 0.10);
 }
 
 input.error {
@@ -276,57 +290,61 @@ input.error {
     display: block;
 }
 
-/* Info buttons */
+/* Info buttons — blue: semantic "informational" */
 .info-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 16px;
     height: 16px;
-    background: var(--border-subtle);
-    color: var(--text-muted);
-    border: none;
+    background: var(--info-faint);
+    color: var(--info);
+    border: 1px solid var(--info-dim);
     border-radius: 50%;
     font-size: 10px;
     font-weight: 700;
     font-family: 'Mada', sans-serif;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
     flex-shrink: 0;
     line-height: 1;
 }
 
 .info-btn:hover,
 .info-btn:focus-visible {
-    background: var(--amber-dim);
-    color: var(--bg-base);
+    background: var(--info-dim);
+    color: oklch(92% 0.008 60);
+    border-color: var(--info);
     outline: none;
 }
 
-/* Pressure tags */
+/* Pressure tags — high contrast, read as warnings at a glance */
 .pressure-tag {
     font-size: 10px;
     font-weight: 700;
     font-family: 'Barlow Condensed', sans-serif;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 2px;
 }
 
 .pressure-tag--high {
-    background: oklch(22% 0.055 22);
-    color: var(--verdict-high-text);
+    background: oklch(26% 0.080 22);
+    color: oklch(78% 0.185 22);
+    border: 1px solid oklch(38% 0.140 22);
 }
 
 .pressure-tag--low {
-    background: oklch(22% 0.045 65);
-    color: var(--amber);
+    background: oklch(22% 0.060 65);
+    color: oklch(82% 0.165 65);
+    border: 1px solid oklch(42% 0.120 65);
 }
 
 .pressure-tag--none {
-    background: oklch(18% 0.030 155);
-    color: oklch(65% 0.130 155);
+    background: oklch(20% 0.050 155);
+    color: oklch(72% 0.145 155);
+    border: 1px solid oklch(38% 0.110 155);
 }
 
 /* --- Advanced toggle --- */
@@ -611,7 +629,7 @@ input.error {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: var(--text-xl);
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--amber);
     margin-top: var(--space-lg);
     letter-spacing: 0.04em;
 }
@@ -664,6 +682,11 @@ input.error {
     margin-top: 1px;
 }
 
+/* First metric — sell pressure is the #1 number, give it amber weight */
+.metrics-row .metric:first-child .metric-figure {
+    color: var(--amber);
+}
+
 /* --- Risk Section --- */
 .risk-section {
     margin-bottom: var(--space-2xl);
@@ -675,7 +698,7 @@ input.error {
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--text-muted);
+    color: var(--amber-dim);
     margin-bottom: var(--space-lg);
 }
 
@@ -707,9 +730,13 @@ input.error {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: var(--text-base);
     font-weight: 700;
-    color: var(--text-primary);
     letter-spacing: 0.04em;
 }
+
+/* Color-code each percentage to match its bar */
+#dumpRiskValue    { color: var(--verdict-high-text); }
+#dilutionRiskValue{ color: var(--amber); }
+#liquidityValue   { color: oklch(68% 0.140 155); }
 
 .risk-track {
     height: 5px;
@@ -741,7 +768,7 @@ input.error {
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--text-muted);
+    color: var(--amber-dim);
     margin-bottom: var(--space-lg);
 }
 
@@ -820,7 +847,7 @@ input.error {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--text-primary);
+    color: var(--amber-dim);
     margin-bottom: var(--space-xl);
     display: flex;
     align-items: baseline;
@@ -943,8 +970,8 @@ input.error {
     bottom: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
-    background: oklch(22% 0.015 60);
-    border: 1px solid var(--border-strong);
+    background: oklch(20% 0.030 240);
+    border: 1px solid var(--info-dim);
     color: var(--text-primary);
     font-size: 12px;
     font-weight: 400;
