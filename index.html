@@ -4,347 +4,296 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Calculate potential selling pressure for pre-TGE crypto projects. Analyze token unlocks, FDV, and market cap ratios.">
-    <meta name="keywords" content="TGE, token generation event, crypto, selling pressure, tokenomics, FDV, market cap">
-    <title>TGE Selling Pressure Calculator - Analyze Token Launch Risk</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+    <title>TGE Pressure Calculator</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚠</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Mada:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Dark Mode Toggle -->
-    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
 
-    <div class="container">
-        <header class="header">
-            <h1>Should I buy at TGE?</h1>
-            <p class="subtitle">Calculate potential sell pressure for pre-TGE crypto projects</p>
+    <div class="page-wrap">
+
+        <header class="site-header">
+            <div class="header-inner">
+                <div class="header-eyebrow">Tokenomics Analysis</div>
+                <h1>Should I buy<br>at TGE?</h1>
+                <p class="header-sub">Enter the token structure. Get a verdict.</p>
+            </div>
         </header>
 
-        <form id="calculatorForm" aria-label="TGE Calculator Form">
-            <div class="form-group">
-                <label for="projectName">Project Name (Optional)</label>
-                <input
-                    type="text"
-                    id="projectName"
-                    placeholder="e.g., SuperToken"
-                    aria-label="Project name"
-                >
-            </div>
+        <main class="main-content">
 
-            <div class="form-group">
-                <label for="totalSupply">
-                    Total Token Supply *
-                    <span class="educational-tooltip" data-tooltip="The maximum number of tokens that will ever exist for this project.">ℹ️</span>
-                </label>
-                <input
-                    type="number"
-                    id="totalSupply"
-                    placeholder="e.g., 1000000000"
-                    required
-                    min="0"
-                    step="1"
-                    aria-required="true"
-                    aria-describedby="totalSupplyHint totalSupplyError"
-                >
-                <div class="input-hint" id="totalSupplyHint">Total number of tokens that will ever exist</div>
-                <div class="input-error" id="totalSupplyError" role="alert"></div>
-            </div>
+            <section class="input-section" aria-label="Calculator inputs">
+                <form id="calculatorForm" novalidate>
 
-            <div class="form-group">
-                <label for="fdv">
-                    Expected FDV at TGE (USD) *
-                    <span class="educational-tooltip" data-tooltip="FDV (Fully Diluted Valuation) = Total Supply × Token Price. This is the theoretical market cap if all tokens were in circulation.">ℹ️</span>
-                </label>
-                <input
-                    type="number"
-                    id="fdv"
-                    placeholder="e.g., 50000000"
-                    required
-                    min="0"
-                    step="1"
-                    aria-required="true"
-                    aria-describedby="fdvHint fdvError"
-                >
-                <div class="input-hint" id="fdvHint">Fully Diluted Valuation in US Dollars</div>
-                <div class="input-error" id="fdvError" role="alert"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="unlockedPercent">% Unlocked at TGE *</label>
-                <input
-                    type="number"
-                    id="unlockedPercent"
-                    placeholder="e.g., 25"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    required
-                    aria-required="true"
-                    aria-describedby="unlockedPercentHint unlockedPercentError"
-                >
-                <div class="input-hint" id="unlockedPercentHint">Percentage of total supply that will be circulating immediately</div>
-                <div class="input-error" id="unlockedPercentError" role="alert"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="expectedPrice">
-                    Expected Token Price (Optional)
-                    <span class="educational-tooltip" data-tooltip="If you have a price estimate, this will show how many tokens will be sold and their dollar value.">ℹ️</span>
-                </label>
-                <input
-                    type="number"
-                    id="expectedPrice"
-                    placeholder="e.g., 0.05"
-                    min="0"
-                    step="0.0001"
-                    aria-describedby="expectedPriceHint"
-                >
-                <div class="input-hint" id="expectedPriceHint">Helps estimate actual number of tokens that will be sold</div>
-            </div>
-
-            <button type="submit" class="calculate-btn" aria-label="Calculate selling pressure">
-                Calculate Selling Pressure
-            </button>
-        </form>
-
-        <div class="action-buttons" id="actionButtons">
-            <button type="button" class="secondary-btn" id="saveBtn" aria-label="Save calculation">
-                💾 Save
-            </button>
-            <button type="button" class="secondary-btn" id="shareBtn" aria-label="Share calculation">
-                📤 Share
-            </button>
-            <button type="button" class="secondary-btn" id="shareXBtn" aria-label="Share on X">
-                𝕏 Post
-            </button>
-            <button type="button" class="secondary-btn export-btn" id="exportBtn" aria-label="Export results">
-                📸 Export
-            </button>
-            <button type="button" class="secondary-btn" id="compareBtn" aria-label="Add to comparison">
-                ⚖️ Compare
-            </button>
-            <button type="button" class="secondary-btn" id="clearBtn" aria-label="Clear form">
-                🗑️ Clear
-            </button>
-        </div>
-
-        <div class="advanced-toggle">
-            <button
-                type="button"
-                class="toggle-btn"
-                id="advancedToggle"
-                aria-expanded="false"
-                aria-controls="advancedSection"
-            >
-                + Advanced: Add breakdown by category (Recommended for accurate rating)
-            </button>
-        </div>
-
-        <div class="advanced-section" id="advancedSection" role="region" aria-label="Advanced options">
-            <h3 style="margin-bottom: 12px; color: #2d3748; font-size: 18px;">Token Distribution Breakdown</h3>
-            <p style="font-size: 13px; color: #718096; margin-bottom: 20px;">
-                Break down the unlocked % by category for more accurate selling pressure calculation. Total should equal the % unlocked at TGE.
-            </p>
-
-            <div class="form-group">
-                <label for="airdrop">
-                    Airdrop % <span style="color: #e53e3e; font-weight: 700;">(High Pressure)</span>
-                </label>
-                <input
-                    type="number"
-                    id="airdrop"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    aria-describedby="airdropHint airdropError"
-                >
-                <div class="input-hint" id="airdropHint">Free tokens → 100% will sell</div>
-                <div class="input-error" id="airdropError" role="alert"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="publicSale">
-                    Public Sale % <span style="color: #e53e3e; font-weight: 700;">(High Pressure)</span>
-                </label>
-                <input
-                    type="number"
-                    id="publicSale"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    aria-describedby="publicSaleHint publicSaleError"
-                >
-                <div class="input-hint" id="publicSaleHint">Early buyers → 100% will sell</div>
-                <div class="input-error" id="publicSaleError" role="alert"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="liquidity">
-                    Liquidity % <span style="color: #38a169; font-weight: 700;">(No Pressure)</span>
-                </label>
-                <input
-                    type="number"
-                    id="liquidity"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    aria-describedby="liquidityHint liquidityError"
-                >
-                <div class="input-hint" id="liquidityHint">Locked in pools → Not selling pressure</div>
-                <div class="input-error" id="liquidityError" role="alert"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="team">
-                    Team % <span style="color: #d69e2e; font-weight: 700;">(Low Pressure)</span>
-                </label>
-                <input
-                    type="number"
-                    id="team"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    aria-describedby="teamHint teamError"
-                >
-                <div class="input-hint" id="teamHint">~30% might sell → Red flag if unlocked at TGE</div>
-                <div class="input-error" id="teamError" role="alert"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="other">
-                    Other % (Ecosystem, Advisors, etc.) <span style="color: #d69e2e; font-weight: 700;">(Low Pressure)</span>
-                </label>
-                <input
-                    type="number"
-                    id="other"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    aria-describedby="otherHint otherError"
-                >
-                <div class="input-hint" id="otherHint">~20% might sell → Varies by category</div>
-                <div class="input-error" id="otherError" role="alert"></div>
-            </div>
-
-            <div class="breakdown-warning" id="breakdownWarning" role="alert">
-                ⚠️ Total breakdown doesn't match % Unlocked at TGE
-            </div>
-        </div>
-
-        <div class="results" id="results" role="region" aria-live="polite" aria-label="Calculation results">
-            <div class="pressure-score">
-                <div class="score-label">Selling Pressure Rating</div>
-                <div class="score-badge" id="scoreBadge" role="status">HIGH</div>
-                <div class="score-description" id="scoreDescription"></div>
-            </div>
-
-            <!-- Risk Breakdown -->
-            <div class="risk-breakdown" id="riskBreakdown">
-                <div class="risk-breakdown-title">
-                    Risk Analysis Breakdown
-                    <span class="educational-tooltip" data-tooltip="Multi-dimensional risk assessment: Dump Risk (immediate sell pressure), Dilution Risk (future token unlocks), Liquidity (ability to absorb sells)">ℹ️</span>
-                </div>
-                <div class="risk-bar">
-                    <div class="risk-bar-label">
-                        <span>Dump Risk</span>
-                        <span id="dumpRiskValue">0%</span>
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="projectName">Project Name</label>
+                            <input type="text" id="projectName" placeholder="e.g. SuperToken" autocomplete="off">
+                        </div>
                     </div>
-                    <div class="risk-bar-track">
-                        <div class="risk-bar-fill high" id="dumpRiskBar" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="risk-bar">
-                    <div class="risk-bar-label">
-                        <span>Dilution Risk</span>
-                        <span id="dilutionRiskValue">0%</span>
-                    </div>
-                    <div class="risk-bar-track">
-                        <div class="risk-bar-fill medium" id="dilutionRiskBar" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="risk-bar">
-                    <div class="risk-bar-label">
-                        <span>Liquidity Score</span>
-                        <span id="liquidityValue">0%</span>
-                    </div>
-                    <div class="risk-bar-track">
-                        <div class="risk-bar-fill low" id="liquidityBar" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="metrics">
-                <div class="metric-card">
-                    <div class="metric-label">
-                        Immediate Sell Pressure
-                        <span class="tooltip-icon" data-tooltip="Dollar value of tokens that holders are likely to sell immediately at TGE based on distribution">?</span>
+                    <div class="field-row field-row--split">
+                        <div class="field">
+                            <label for="totalSupply">
+                                Total Token Supply
+                                <span class="req">*</span>
+                                <button type="button" class="info-btn" aria-label="What is total token supply?" data-tooltip="The maximum number of tokens that will ever exist for this project.">?</button>
+                            </label>
+                            <input type="number" id="totalSupply" placeholder="1,000,000,000" required min="0" step="1" aria-required="true" aria-describedby="totalSupplyError">
+                            <div class="field-error" id="totalSupplyError" role="alert"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="fdv">
+                                Expected FDV (USD)
+                                <span class="req">*</span>
+                                <button type="button" class="info-btn" aria-label="What is FDV?" data-tooltip="Fully Diluted Valuation: Total Supply × Token Price. Theoretical market cap if all tokens circulated.">?</button>
+                            </label>
+                            <input type="number" id="fdv" placeholder="50,000,000" required min="0" step="1" aria-required="true" aria-describedby="fdvError">
+                            <div class="field-error" id="fdvError" role="alert"></div>
+                        </div>
                     </div>
-                    <div class="metric-value" id="dollarAmount">$0</div>
-                    <div class="metric-subtext">Can be sold at TGE</div>
+
+                    <div class="field-row field-row--split">
+                        <div class="field">
+                            <label for="unlockedPercent">
+                                % Unlocked at TGE
+                                <span class="req">*</span>
+                            </label>
+                            <div class="input-with-unit">
+                                <input type="number" id="unlockedPercent" placeholder="25" min="0" max="100" step="0.01" required aria-required="true" aria-describedby="unlockedPercentError">
+                                <span class="unit">%</span>
+                            </div>
+                            <div class="field-hint">Circulating immediately</div>
+                            <div class="field-error" id="unlockedPercentError" role="alert"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="expectedPrice">
+                                Expected Token Price
+                                <button type="button" class="info-btn" aria-label="Why provide token price?" data-tooltip="Optional. Converts pressure to concrete token counts and dollar values.">?</button>
+                            </label>
+                            <div class="input-with-unit">
+                                <span class="unit unit--prefix">$</span>
+                                <input type="number" id="expectedPrice" placeholder="0.05" min="0" step="0.0001">
+                            </div>
+                            <div class="field-hint">Optional — for token quantity context</div>
+                        </div>
+                    </div>
+
+                    <div class="advanced-toggle-row">
+                        <button type="button" class="toggle-advanced" id="advancedToggle" aria-expanded="false" aria-controls="advancedSection">
+                            <span class="toggle-icon">+</span>
+                            <span class="toggle-label">Breakdown by category</span>
+                            <span class="toggle-note">Recommended for accurate rating</span>
+                        </button>
+                    </div>
+
+                    <div class="advanced-section" id="advancedSection" aria-hidden="true">
+                    <div class="advanced-inner">
+                        <div class="advanced-header">Token Distribution Breakdown</div>
+                        <p class="advanced-note">Allocate the unlocked % across categories. Total must equal % Unlocked at TGE.</p>
+
+                        <div class="field-row field-row--three">
+                            <div class="field">
+                                <label for="airdrop">
+                                    Airdrop %
+                                    <span class="pressure-tag pressure-tag--high">100% sells</span>
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="airdrop" placeholder="0" min="0" max="100" step="0.01" aria-describedby="airdropError">
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="field-error" id="airdropError" role="alert"></div>
+                            </div>
+
+                            <div class="field">
+                                <label for="publicSale">
+                                    Public Sale %
+                                    <span class="pressure-tag pressure-tag--high">100% sells</span>
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="publicSale" placeholder="0" min="0" max="100" step="0.01" aria-describedby="publicSaleError">
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="field-error" id="publicSaleError" role="alert"></div>
+                            </div>
+
+                            <div class="field">
+                                <label for="liquidity">
+                                    Liquidity %
+                                    <span class="pressure-tag pressure-tag--none">no pressure</span>
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="liquidity" placeholder="0" min="0" max="100" step="0.01" aria-describedby="liquidityError">
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="field-error" id="liquidityError" role="alert"></div>
+                            </div>
+                        </div>
+
+                        <div class="field-row field-row--split">
+                            <div class="field">
+                                <label for="team">
+                                    Team %
+                                    <span class="pressure-tag pressure-tag--low">~30% sells</span>
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="team" placeholder="0" min="0" max="100" step="0.01" aria-describedby="teamError">
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="field-hint">Red flag if unlocked at TGE</div>
+                                <div class="field-error" id="teamError" role="alert"></div>
+                            </div>
+
+                            <div class="field">
+                                <label for="other">
+                                    Other %
+                                    <span class="pressure-tag pressure-tag--low">~20% sells</span>
+                                </label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="other" placeholder="0" min="0" max="100" step="0.01" aria-describedby="otherError">
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="field-hint">Ecosystem, advisors, etc.</div>
+                                <div class="field-error" id="otherError" role="alert"></div>
+                            </div>
+                        </div>
+
+                        <div class="breakdown-warning" id="breakdownWarning" role="alert" aria-hidden="true"></div>
+                    </div><!-- /advanced-inner -->
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-calculate" id="calculateBtn">
+                            <span>Run Analysis</span>
+                        </button>
+                        <button type="button" class="btn-ghost" id="clearBtn">Clear</button>
+                    </div>
+
+                </form>
+            </section>
+
+            <!-- Results -->
+            <section class="results-section" id="results" aria-live="polite" aria-label="Analysis results">
+
+                <div class="verdict-block" id="verdictBlock">
+                    <div class="verdict-label">Selling Pressure Verdict</div>
+                    <div class="verdict-rating" id="verdictRating">—</div>
+                    <div class="verdict-description" id="verdictDescription"></div>
+                    <div class="verdict-pressure-line" id="verdictPressureLine"></div>
                 </div>
 
-                <div class="metric-card">
-                    <div class="metric-label">
-                        Circulating Supply
-                        <span class="tooltip-icon" data-tooltip="Percentage of total supply that is unlocked and tradeable immediately">?</span>
+                <div class="metrics-row" id="metricsRow">
+                    <div class="metric">
+                        <div class="metric-figure" id="dollarAmount">—</div>
+                        <div class="metric-name">
+                            Immediate Sell Pressure
+                            <button type="button" class="info-btn" aria-label="About immediate sell pressure" data-tooltip="Dollar value of tokens likely to be sold immediately at TGE based on distribution.">?</button>
+                        </div>
                     </div>
-                    <div class="metric-value" id="circulatingPercent">0%</div>
-                    <div class="metric-subtext">Of total supply unlocked</div>
+                    <div class="metric">
+                        <div class="metric-figure" id="circulatingPercent">—</div>
+                        <div class="metric-name">
+                            Circulating Supply
+                            <button type="button" class="info-btn" aria-label="About circulating supply" data-tooltip="Percentage of total supply unlocked and tradeable immediately.">?</button>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-figure" id="initialMcap">—</div>
+                        <div class="metric-name">
+                            Initial Market Cap
+                            <button type="button" class="info-btn" aria-label="About initial market cap" data-tooltip="True market cap based only on circulating supply.">?</button>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-figure" id="mcfdvRatio">—</div>
+                        <div class="metric-name">
+                            MC / FDV Ratio
+                            <button type="button" class="info-btn" aria-label="About MC/FDV ratio" data-tooltip="Higher = less future dilution. >50% is considered healthy.">?</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="metric-card">
-                    <div class="metric-label">
-                        Initial Market Cap
-                        <span class="tooltip-icon" data-tooltip="Market cap based only on circulating supply (unlocked tokens × price)">?</span>
+                <div class="risk-section" id="riskSection">
+                    <div class="risk-header">Risk Dimensions</div>
+                    <div class="risk-bars">
+                        <div class="risk-row">
+                            <div class="risk-label">
+                                <span class="risk-name">Dump Risk</span>
+                                <span class="risk-pct" id="dumpRiskValue">0%</span>
+                            </div>
+                            <div class="risk-track">
+                                <div class="risk-fill risk-fill--high" id="dumpRiskBar"></div>
+                            </div>
+                        </div>
+                        <div class="risk-row">
+                            <div class="risk-label">
+                                <span class="risk-name">Dilution Risk</span>
+                                <span class="risk-pct" id="dilutionRiskValue">0%</span>
+                            </div>
+                            <div class="risk-track">
+                                <div class="risk-fill risk-fill--medium" id="dilutionRiskBar"></div>
+                            </div>
+                        </div>
+                        <div class="risk-row">
+                            <div class="risk-label">
+                                <span class="risk-name">Liquidity Score</span>
+                                <span class="risk-pct" id="liquidityValue">0%</span>
+                            </div>
+                            <div class="risk-track">
+                                <div class="risk-fill risk-fill--low" id="liquidityBar"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="metric-value" id="initialMcap">$0</div>
-                    <div class="metric-subtext">Based on circulating supply</div>
                 </div>
 
-                <div class="metric-card">
-                    <div class="metric-label">
-                        MC/FDV Ratio
-                        <span class="tooltip-icon" data-tooltip="Market Cap to Fully Diluted Valuation ratio. Higher means less future dilution risk. >50% is healthy.">?</span>
-                    </div>
-                    <div class="metric-value" id="mcfdvRatio">0%</div>
-                    <div class="metric-subtext">Higher = Less inflation risk</div>
+                <div class="chart-section" id="chartSection">
+                    <div class="chart-header">Distribution Breakdown</div>
+                    <canvas id="unlockChart" aria-label="Token distribution breakdown chart"></canvas>
                 </div>
-            </div>
 
-            <div class="chart-container" id="chartContainer" style="display: none;">
-                <div class="chart-title">Token Distribution at TGE</div>
-                <canvas id="unlockChart" aria-label="Token distribution breakdown chart"></canvas>
-            </div>
-        </div>
+                <div class="price-context" id="priceContext"></div>
 
-        <!-- Comparison Mode -->
-        <div class="comparison-container" id="comparisonContainer">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">
-                Project Comparisons
-                <span class="educational-tooltip" data-tooltip="Compare up to 3 calculations side-by-side to evaluate different projects or scenarios">ℹ️</span>
-            </h3>
-            <div class="comparison-grid" id="comparisonGrid"></div>
-        </div>
+                <div class="result-actions" id="resultActions">
+                    <button type="button" class="btn-action" id="saveBtn">Save</button>
+                    <button type="button" class="btn-action" id="shareBtn">Copy Link</button>
+                    <button type="button" class="btn-action" id="shareXBtn">Post to X</button>
+                    <button type="button" class="btn-action" id="exportBtn">Export</button>
+                    <button type="button" class="btn-action" id="compareBtn">Compare</button>
+                </div>
+
+            </section>
+
+            <!-- Comparisons -->
+            <section class="comparison-section" id="comparisonSection" aria-label="Project comparisons">
+                <div class="comparison-header">
+                    Comparisons
+                    <span class="comparison-count" id="comparisonCount"></span>
+                </div>
+                <div class="comparison-grid" id="comparisonGrid"></div>
+            </section>
+
+        </main>
+
+        <footer class="site-footer">
+            <span>TGE Pressure Calculator</span>
+            <span class="footer-sep">—</span>
+            <a href="https://github.com/firedintern/tge-calculator" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span class="footer-sep">·</span>
+            <a href="https://github.com/firedintern/tge-calculator/issues" target="_blank" rel="noopener noreferrer">Report Issue</a>
+        </footer>
+
     </div>
 
-    <!-- Toast notification -->
-    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+    <!-- Tooltip -->
+    <div class="tooltip-popup" id="tooltipPopup" role="tooltip" aria-hidden="true"></div>
 
-    <!-- Footer -->
-    <footer class="site-footer">
-        <div class="footer-content">
-            <p>&copy; 2025 TGE Calculator | Built with ❤️ for crypto research</p>
-            <div class="footer-links">
-                <a href="https://github.com/firedintern/tge-calculator" target="_blank" rel="noopener noreferrer">GitHub</a>
-                <span class="separator">•</span>
-                <a href="https://github.com/firedintern/tge-calculator/issues" target="_blank" rel="noopener noreferrer">Report Issue</a>
-            </div>
-        </div>
-    </footer>
+    <!-- Toast -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="script.js"></script>
 </body>

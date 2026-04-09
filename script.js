@@ -1,22 +1,24 @@
-// TGE Selling Pressure Calculator - Enhanced Version
-// Features: Animation, Dark Mode, Comparison, Export, Educational Tooltips, Risk Breakdown
+// TGE Pressure Calculator
+// Sharp. Ruthless. Professional.
 
 class TGECalculator {
     constructor() {
         this.form = document.getElementById('calculatorForm');
-        this.results = document.getElementById('results');
+        this.resultsSection = document.getElementById('results');
         this.advancedToggle = document.getElementById('advancedToggle');
         this.advancedSection = document.getElementById('advancedSection');
         this.savedCalculations = this.loadComparisons();
+        this.tooltipEl = document.getElementById('tooltipPopup');
+        this._tooltipHideTimer = null;
 
         this.init();
         this.loadFromURL();
         this.loadSavedData();
-        this.initDarkMode();
+        this.renderComparisons();
     }
 
     init() {
-        // Event listeners
+        // Form submit
         this.form.addEventListener('submit', (e) => {
             e.preventDefault();
             if (this.validateForm()) {
@@ -24,24 +26,18 @@ class TGECalculator {
             }
         });
 
-        this.advancedToggle.addEventListener('click', () => {
-            this.toggleAdvanced();
-        });
+        // Advanced toggle
+        this.advancedToggle.addEventListener('click', () => this.toggleAdvanced());
 
-        // Real-time validation
-        const inputs = this.form.querySelectorAll('input[type="number"]');
-        inputs.forEach(input => {
-            input.addEventListener('input', () => this.validateInput(input));
+        // Real-time validation on required inputs
+        this.form.querySelectorAll('input[required]').forEach(input => {
             input.addEventListener('blur', () => this.validateInput(input));
         });
 
         // Breakdown validation
-        const breakdownInputs = ['airdrop', 'publicSale', 'liquidity', 'team', 'other'];
-        breakdownInputs.forEach(id => {
+        ['airdrop', 'publicSale', 'liquidity', 'team', 'other'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('input', () => this.validateBreakdown());
-            }
+            if (el) el.addEventListener('input', () => this.validateBreakdown());
         });
 
         // Action buttons
@@ -52,639 +48,621 @@ class TGECalculator {
         document.getElementById('exportBtn').addEventListener('click', () => this.exportToPNG());
         document.getElementById('compareBtn').addEventListener('click', () => this.addToComparison());
 
-        // Theme toggle
-        document.getElementById('themeToggle').addEventListener('click', () => this.toggleDarkMode());
+        // Tooltip system
+        this.initTooltips();
 
-        // Mobile-friendly tooltips (click to show/hide on touch devices)
-        this.initMobileTooltips();
-
-        // Chart responsiveness - redraw on window resize
+        // Chart resize
         this.initChartResize();
     }
 
-    initChartResize() {
-        let resizeTimer;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                // Redraw chart if it's visible
-                const chartContainer = document.getElementById('chartContainer');
-                if (chartContainer && chartContainer.style.display !== 'none') {
-                    const formData = this.getFormData();
-                    if (formData) {
-                        this.createUnlockChart(
-                            formData.airdrop,
-                            formData.publicSale,
-                            formData.liquidity,
-                            formData.team,
-                            formData.other,
-                            formData.unlockedPercent
-                        );
-                    }
-                }
-            }, 250); // Debounce 250ms
-        });
-    }
-
-    initMobileTooltips() {
-        const tooltips = document.querySelectorAll('.tooltip-icon, .educational-tooltip');
-
-        tooltips.forEach(tooltip => {
-            // Add click handler for mobile
-            tooltip.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                // Toggle active class for mobile display
-                tooltip.classList.toggle('tooltip-active');
-
-                // Remove active class from other tooltips
-                tooltips.forEach(other => {
-                    if (other !== tooltip) {
-                        other.classList.remove('tooltip-active');
-                    }
-                });
-            });
-        });
-
-        // Close tooltips when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('tooltip-icon') &&
-                !e.target.classList.contains('educational-tooltip')) {
-                tooltips.forEach(tooltip => {
-                    tooltip.classList.remove('tooltip-active');
-                });
-            }
-        });
-    }
-
-    // Dark Mode
-    initDarkMode() {
-        const savedTheme = localStorage.getItem('tge-calculator-theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            document.getElementById('themeToggle').textContent = '☀️';
-        }
-    }
-
-    toggleDarkMode() {
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
-        localStorage.setItem('tge-calculator-theme', isDark ? 'dark' : 'light');
-    }
+    // ─── Advanced section ─────────────────────────────────────
 
     toggleAdvanced() {
-        this.advancedSection.classList.toggle('show');
-        if (this.advancedSection.classList.contains('show')) {
-            this.advancedToggle.textContent = '- Hide advanced options';
-            this.advancedToggle.setAttribute('aria-expanded', 'true');
-        } else {
-            this.advancedToggle.textContent = '+ Advanced: Add breakdown by category (Recommended for accurate rating)';
-            this.advancedToggle.setAttribute('aria-expanded', 'false');
-        }
+        const isOpen = this.advancedSection.classList.contains('open');
+        this.advancedSection.classList.toggle('open', !isOpen);
+        this.advancedToggle.setAttribute('aria-expanded', String(!isOpen));
+        this.advancedSection.setAttribute('aria-hidden', String(isOpen));
+        this.advancedToggle.querySelector('.toggle-label').textContent =
+            isOpen ? 'Breakdown by category' : 'Hide breakdown';
     }
+
+    // ─── Validation ───────────────────────────────────────────
 
     validateInput(input) {
         const value = parseFloat(input.value);
-        const errorEl = input.parentElement.querySelector('.input-error');
+        const errorEl = document.getElementById(input.id + 'Error');
         let isValid = true;
         let errorMsg = '';
 
         if (input.required && (!input.value || isNaN(value))) {
             isValid = false;
-            errorMsg = 'This field is required';
-        } else if (value < 0) {
+            errorMsg = 'Required';
+        } else if (!isNaN(value) && value < 0) {
             isValid = false;
-            errorMsg = 'Value cannot be negative';
-        } else if (input.id.includes('Percent') || ['airdrop', 'publicSale', 'liquidity', 'team', 'other'].includes(input.id)) {
-            if (value > 100) {
-                isValid = false;
-                errorMsg = 'Percentage cannot exceed 100%';
-            }
-        } else if (input.id === 'fdv' && value > 1000000000000) {
+            errorMsg = 'Cannot be negative';
+        } else if (input.id === 'unlockedPercent' && value > 100) {
             isValid = false;
-            errorMsg = 'FDV seems unreasonably high';
-        } else if (input.id === 'totalSupply' && value > 1000000000000000) {
+            errorMsg = 'Max 100%';
+        } else if (['airdrop','publicSale','liquidity','team','other'].includes(input.id) && value > 100) {
             isValid = false;
-            errorMsg = 'Supply seems unreasonably high';
+            errorMsg = 'Max 100%';
+        } else if (input.id === 'fdv' && value > 1e12) {
+            isValid = false;
+            errorMsg = 'Unreasonably high';
         }
 
-        if (!isValid) {
-            input.classList.add('error');
-            if (errorEl) {
-                errorEl.textContent = errorMsg;
-                errorEl.classList.add('show');
-            }
-        } else {
-            input.classList.remove('error');
-            if (errorEl) {
-                errorEl.classList.remove('show');
-            }
+        input.classList.toggle('error', !isValid);
+        if (errorEl) {
+            errorEl.textContent = errorMsg;
+            errorEl.classList.toggle('show', !isValid);
         }
 
         return isValid;
     }
 
     validateForm() {
-        const inputs = this.form.querySelectorAll('input[required]');
         let isValid = true;
-
-        inputs.forEach(input => {
-            if (!this.validateInput(input)) {
-                isValid = false;
-            }
+        this.form.querySelectorAll('input[required]').forEach(input => {
+            if (!this.validateInput(input)) isValid = false;
         });
-
         return isValid;
     }
 
     validateBreakdown() {
-        const airdrop = parseFloat(document.getElementById('airdrop').value) || 0;
+        const airdrop    = parseFloat(document.getElementById('airdrop').value)    || 0;
         const publicSale = parseFloat(document.getElementById('publicSale').value) || 0;
-        const liquidity = parseFloat(document.getElementById('liquidity').value) || 0;
-        const team = parseFloat(document.getElementById('team').value) || 0;
-        const other = parseFloat(document.getElementById('other').value) || 0;
-        const unlockedPercent = parseFloat(document.getElementById('unlockedPercent').value) || 0;
+        const liquidity  = parseFloat(document.getElementById('liquidity').value)  || 0;
+        const team       = parseFloat(document.getElementById('team').value)       || 0;
+        const other      = parseFloat(document.getElementById('other').value)      || 0;
+        const unlocked   = parseFloat(document.getElementById('unlockedPercent').value) || 0;
 
-        const totalBreakdown = airdrop + publicSale + liquidity + team + other;
-        const breakdownWarning = document.getElementById('breakdownWarning');
+        const total = airdrop + publicSale + liquidity + team + other;
+        const warning = document.getElementById('breakdownWarning');
 
-        if (totalBreakdown > 0 && Math.abs(totalBreakdown - unlockedPercent) > 1) {
-            breakdownWarning.classList.add('show');
-            breakdownWarning.textContent = `⚠️ Total breakdown (${totalBreakdown.toFixed(1)}%) doesn't match % Unlocked at TGE (${unlockedPercent.toFixed(1)}%)`;
-            return false;
+        const mismatch = total > 0 && Math.abs(total - unlocked) > 1;
+        warning.classList.toggle('show', mismatch);
+        if (mismatch) {
+            warning.textContent = `Breakdown total (${total.toFixed(1)}%) ≠ % Unlocked (${unlocked.toFixed(1)}%)`;
+            warning.setAttribute('aria-hidden', 'false');
         } else {
-            breakdownWarning.classList.remove('show');
-            return true;
+            warning.setAttribute('aria-hidden', 'true');
         }
+        return !mismatch;
     }
 
+    // ─── Core calculation ─────────────────────────────────────
+
     calculatePressure() {
-        const totalSupply = parseFloat(document.getElementById('totalSupply').value);
-        const fdv = parseFloat(document.getElementById('fdv').value);
-        const unlockedPercent = parseFloat(document.getElementById('unlockedPercent').value);
-        const projectName = document.getElementById('projectName').value || 'Unknown Project';
-        const expectedPrice = parseFloat(document.getElementById('expectedPrice').value) || 0;
+        const totalSupply    = parseFloat(document.getElementById('totalSupply').value);
+        const fdv            = parseFloat(document.getElementById('fdv').value);
+        const unlockedPercent= parseFloat(document.getElementById('unlockedPercent').value);
+        const expectedPrice  = parseFloat(document.getElementById('expectedPrice').value) || 0;
 
-        // Get breakdown if provided
-        const airdrop = parseFloat(document.getElementById('airdrop').value) || 0;
+        const airdrop    = parseFloat(document.getElementById('airdrop').value)    || 0;
         const publicSale = parseFloat(document.getElementById('publicSale').value) || 0;
-        const liquidity = parseFloat(document.getElementById('liquidity').value) || 0;
-        const team = parseFloat(document.getElementById('team').value) || 0;
-        const other = parseFloat(document.getElementById('other').value) || 0;
+        const liquidity  = parseFloat(document.getElementById('liquidity').value)  || 0;
+        const team       = parseFloat(document.getElementById('team').value)       || 0;
+        const other      = parseFloat(document.getElementById('other').value)      || 0;
 
-        const totalBreakdown = airdrop + publicSale + liquidity + team + other;
-        const hasBreakdown = totalBreakdown > 0;
+        const hasBreakdown = (airdrop + publicSale + liquidity + team + other) > 0;
 
-        // Calculate weighted selling pressure
-        let effectiveSellingPressure;
+        // Weighted selling pressure
+        let effectivePressure;
         if (hasBreakdown) {
-            effectiveSellingPressure = (airdrop * 1.0) + (publicSale * 1.0) + (team * 0.3) + (liquidity * 0) + (other * 0.2);
+            effectivePressure = (airdrop * 1.0) + (publicSale * 1.0) + (team * 0.3) + (other * 0.2) + (liquidity * 0);
         } else {
-            effectiveSellingPressure = unlockedPercent * 0.8;
+            effectivePressure = unlockedPercent * 0.8;
         }
 
-        // Calculate metrics
-        const unlockedTokens = (unlockedPercent / 100) * totalSupply;
-        const potentialSellValue = (effectiveSellingPressure / 100) * fdv;
-        const initialMcap = (unlockedPercent / 100) * fdv;
-        const mcfdvRatio = unlockedPercent;
+        const initialMcap  = (unlockedPercent / 100) * fdv;
+        const potentialSell= (effectivePressure / 100) * fdv;
+        const mcfdvRatio   = unlockedPercent;
 
-        // Calculate risk dimensions
-        const dumpRisk = Math.min(effectiveSellingPressure * 2, 100); // High if lots of airdrop/public
-        const dilutionRisk = Math.max(0, 100 - unlockedPercent); // High if low unlock %
-        const liquidityScore = liquidity * 2; // Higher liquidity = better
+        // Risk dimensions
+        const dumpRisk      = Math.min(effectivePressure * 2, 100);
+        const dilutionRisk  = Math.max(0, 100 - unlockedPercent);
+        const liquidityScore= Math.min(liquidity * 2, 100);
 
-        // Determine pressure rating
-        let rating, ratingClass, description;
-
-        if (effectiveSellingPressure > 40 || unlockedPercent > 60) {
-            rating = 'HIGH';
-            ratingClass = 'score-high';
-            if (effectiveSellingPressure > 40) {
-                description = '🚨 Very high selling pressure expected. Large portion will be dumped immediately at TGE.';
-            } else {
-                description = '🚨 High unlock percentage creates significant inflation risk as most supply is already circulating.';
-            }
-        } else if (effectiveSellingPressure >= 20 || unlockedPercent >= 30) {
-            rating = 'MEDIUM';
-            ratingClass = 'score-medium';
-            description = '⚡ Moderate selling pressure. Monitor initial trading carefully and watch for dips.';
+        // Verdict
+        let verdict, verdictClass;
+        if (effectivePressure > 40 || unlockedPercent > 60) {
+            verdict = 'HIGH';
+            verdictClass = 'verdict-high';
+        } else if (effectivePressure >= 20 || unlockedPercent >= 30) {
+            verdict = 'MEDIUM';
+            verdictClass = 'verdict-medium';
         } else {
-            rating = 'LOW';
-            ratingClass = 'score-low';
-            description = '✅ Low immediate selling pressure. Most tokens remain locked with healthy vesting schedule.';
+            verdict = 'LOW';
+            verdictClass = 'verdict-low';
         }
 
-        // Add breakdown insights
+        // Description
+        const description = this.buildDescription(verdict, effectivePressure, unlockedPercent, airdrop, publicSale, team, liquidity, fdv, hasBreakdown);
+
+        // Update DOM
+        const verdictBlock = document.getElementById('verdictBlock');
+        verdictBlock.className = `verdict-block ${verdictClass}`;
+
+        document.getElementById('verdictRating').textContent = verdict;
+        document.getElementById('verdictDescription').textContent = description;
+
         if (hasBreakdown) {
-            const highPressurePercent = airdrop + publicSale;
-            if (highPressurePercent > 25) {
-                description += ` Airdrops and public sales (${highPressurePercent.toFixed(1)}%) will create significant immediate sell pressure.`;
-            }
-            if (team > 0) {
-                description += ` ⚠️ Team tokens unlocked at TGE is a red flag - shows lack of long-term commitment.`;
-            }
-            if (liquidity > 50) {
-                description += ` ✅ Good liquidity allocation (${liquidity.toFixed(1)}%) helps absorb selling pressure.`;
-            }
+            document.getElementById('verdictPressureLine').textContent =
+                `Weighted pressure: ${effectivePressure.toFixed(1)}%`;
+        } else {
+            document.getElementById('verdictPressureLine').textContent = '';
         }
 
-        // Special case: Low float, high FDV warning
-        if (unlockedPercent < 10 && fdv > 100000000) {
-            description += ' ⚠️ Very low float with high FDV - be cautious of future dilution when tokens unlock.';
-        }
+        // Animate metrics
+        this.animateValue('dollarAmount', 0, potentialSell, 900, true);
+        this.animateValue('circulatingPercent', 0, unlockedPercent, 900, false, '%');
+        this.animateValue('initialMcap', 0, initialMcap, 900, true);
+        this.animateValue('mcfdvRatio', 0, mcfdvRatio, 900, false, '%');
 
-        // Update UI with animation
-        document.getElementById('scoreBadge').textContent = rating;
-        document.getElementById('scoreBadge').className = `score-badge ${ratingClass}`;
-        document.getElementById('scoreBadge').setAttribute('aria-label', `Selling pressure rating: ${rating}`);
-        document.getElementById('scoreDescription').textContent = description;
+        // Risk bars
+        setTimeout(() => {
+            document.getElementById('dumpRiskBar').style.width    = `${dumpRisk}%`;
+            document.getElementById('dilutionRiskBar').style.width= `${dilutionRisk}%`;
+            document.getElementById('liquidityBar').style.width   = `${liquidityScore}%`;
 
-        // Animate numbers
-        this.animateValue('dollarAmount', 0, potentialSellValue, 1000, true);
-        this.animateValue('circulatingPercent', 0, unlockedPercent, 1000, false, '%');
-        this.animateValue('initialMcap', 0, initialMcap, 1000, true);
-        this.animateValue('mcfdvRatio', 0, mcfdvRatio, 1000, false, '%');
+            document.getElementById('dumpRiskValue').textContent    = `${dumpRisk.toFixed(0)}%`;
+            document.getElementById('dilutionRiskValue').textContent= `${dilutionRisk.toFixed(0)}%`;
+            document.getElementById('liquidityValue').textContent   = `${liquidityScore.toFixed(0)}%`;
+        }, 120);
 
-        // Update risk breakdown
-        this.updateRiskBreakdown(dumpRisk, dilutionRisk, liquidityScore);
+        // Chart
+        this.createUnlockChart(airdrop, publicSale, liquidity, team, other);
 
-        // Show effective pressure if breakdown was used
-        const oldNote = document.querySelector('.effective-pressure-note');
-        if (oldNote) oldNote.remove();
-
-        if (hasBreakdown && effectiveSellingPressure !== unlockedPercent) {
-            const effectiveNote = document.createElement('div');
-            effectiveNote.className = 'effective-pressure-note';
-            effectiveNote.innerHTML = `<strong>Weighted Selling Pressure: ${effectiveSellingPressure.toFixed(1)}%</strong><br>Based on category breakdown (Airdrop/Public Sale 100%, Team 30%, Other 20%, Liquidity excluded)`;
-            this.results.appendChild(effectiveNote);
-        }
-
-        // Add historical price context
+        // Price context
+        const priceContext = document.getElementById('priceContext');
         if (expectedPrice > 0) {
-            const priceNote = document.createElement('div');
-            priceNote.className = 'effective-pressure-note';
-            const tokensToSell = (effectiveSellingPressure / 100) * totalSupply;
-            const sellValue = tokensToSell * expectedPrice;
-            priceNote.innerHTML = `<strong>Price Context at $${expectedPrice.toFixed(4)}/token:</strong><br>
-                ~${this.formatLargeNumber(tokensToSell)} tokens likely to be sold<br>
-                Worth approximately ${this.formatCurrency(sellValue)}`;
-            this.results.appendChild(priceNote);
+            const tokensToSell = (effectivePressure / 100) * totalSupply;
+            priceContext.innerHTML =
+                `<strong>At $${expectedPrice.toFixed(4)}/token —</strong> ` +
+                `~${this.formatLargeNumber(tokensToSell)} tokens likely sold, ` +
+                `worth ${this.formatCurrency(tokensToSell * expectedPrice)}`;
+            priceContext.classList.add('show');
+        } else {
+            priceContext.classList.remove('show');
         }
 
-        // Create unlock schedule chart
-        this.createUnlockChart(airdrop, publicSale, liquidity, team, other, unlockedPercent);
-
-        // Show results and action buttons
-        this.results.classList.add('show');
-        document.getElementById('actionButtons').classList.add('show');
-
-        // Scroll to results
-        this.results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Show results
+        this.showResults();
 
         // Auto-save
         this.autoSave();
     }
 
-    // Animated number counting
-    animateValue(elementId, start, end, duration, isCurrency = false, suffix = '') {
-        const element = document.getElementById(elementId);
-        const range = end - start;
-        const increment = range / (duration / 16);
-        let current = start;
+    buildDescription(verdict, effectivePressure, unlocked, airdrop, publicSale, team, liquidity, fdv, hasBreakdown) {
+        const parts = [];
 
-        element.classList.add('animating');
-
-        const timer = setInterval(() => {
-            current += increment;
-            if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-                if (isCurrency) {
-                    element.textContent = this.formatCurrency(end);
-                } else {
-                    element.textContent = end.toFixed(2) + suffix;
-                }
-                clearInterval(timer);
-                setTimeout(() => element.classList.remove('animating'), 500);
+        if (verdict === 'HIGH') {
+            if (effectivePressure > 40) {
+                parts.push(`Effective selling pressure is ${effectivePressure.toFixed(1)}% — a substantial portion of FDV will hit the market at open.`);
             } else {
-                if (isCurrency) {
-                    element.textContent = this.formatCurrency(current);
-                } else {
-                    element.textContent = current.toFixed(2) + suffix;
-                }
+                parts.push(`${unlocked.toFixed(1)}% of supply unlocks immediately. High float creates inflation risk from day one.`);
             }
-        }, 16);
+        } else if (verdict === 'MEDIUM') {
+            parts.push(`Moderate selling pressure at ${effectivePressure.toFixed(1)}%. Monitor initial price action closely.`);
+        } else {
+            parts.push(`Effective pressure is ${effectivePressure.toFixed(1)}%. Most supply remains locked — healthy vesting structure.`);
+        }
+
+        if (hasBreakdown) {
+            const highPct = airdrop + publicSale;
+            if (highPct > 25) parts.push(`Airdrop + public sale (${highPct.toFixed(1)}%) will sell near-immediately.`);
+            if (team > 0) parts.push(`Team tokens unlocked at TGE — a credibility red flag.`);
+            if (liquidity > 50) parts.push(`Liquidity allocation (${liquidity.toFixed(1)}%) provides meaningful cushion.`);
+        }
+
+        if (unlocked < 10 && fdv > 1e8) {
+            parts.push(`Low float + high FDV: future unlock events will be severe.`);
+        }
+
+        return parts.join(' ');
     }
 
-    // Risk breakdown bars
-    updateRiskBreakdown(dumpRisk, dilutionRisk, liquidityScore) {
-        const container = document.getElementById('riskBreakdown');
+    showResults() {
+        const el = this.resultsSection;
+        el.style.display = 'block';
 
-        // Reset bars width with animation delay
-        setTimeout(() => {
-            document.getElementById('dumpRiskBar').style.width = `${dumpRisk}%`;
-            document.getElementById('dilutionRiskBar').style.width = `${dilutionRisk}%`;
-            document.getElementById('liquidityBar').style.width = `${Math.min(liquidityScore, 100)}%`;
+        // Force reflow before adding class
+        void el.offsetHeight;
 
-            document.getElementById('dumpRiskValue').textContent = `${dumpRisk.toFixed(0)}%`;
-            document.getElementById('dilutionRiskValue').textContent = `${dilutionRisk.toFixed(0)}%`;
-            document.getElementById('liquidityValue').textContent = `${Math.min(liquidityScore, 100).toFixed(0)}%`;
-        }, 100);
+        el.classList.add('visible');
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                el.classList.add('revealed');
+            });
+        });
+
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    createUnlockChart(airdrop, publicSale, liquidity, team, other, unlockedPercent) {
-        const chartContainer = document.getElementById('chartContainer');
-        const canvas = document.getElementById('unlockChart');
+    // ─── Animation ────────────────────────────────────────────
 
-        if (airdrop + publicSale + liquidity + team + other === 0) {
-            chartContainer.style.display = 'none';
+    animateValue(id, start, end, duration, isCurrency = false, suffix = '') {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const startTime = performance.now();
+
+        const tick = (now) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Ease out quart
+            const eased = 1 - Math.pow(1 - progress, 4);
+            const current = start + (end - start) * eased;
+
+            el.textContent = isCurrency
+                ? this.formatCurrency(current)
+                : current.toFixed(2) + suffix;
+
+            if (progress < 1) requestAnimationFrame(tick);
+        };
+
+        requestAnimationFrame(tick);
+    }
+
+    // ─── Chart ────────────────────────────────────────────────
+
+    createUnlockChart(airdrop, publicSale, liquidity, team, other) {
+        const section = document.getElementById('chartSection');
+        const canvas  = document.getElementById('unlockChart');
+
+        const categories = [
+            { name: 'Airdrop',      value: airdrop,    color: 'oklch(62% 0.18 22)' },
+            { name: 'Public Sale',  value: publicSale, color: 'oklch(74% 0.15 50)' },
+            { name: 'Team',         value: team,       color: 'oklch(76% 0.16 65)' },
+            { name: 'Other',        value: other,      color: 'oklch(65% 0.10 220)' },
+            { name: 'Liquidity',    value: liquidity,  color: 'oklch(65% 0.13 155)' }
+        ].filter(c => c.value > 0);
+
+        if (categories.length === 0) {
+            section.style.display = 'none';
             return;
         }
 
-        chartContainer.style.display = 'block';
+        section.style.display = 'block';
 
-        // Wait for layout to settle
         setTimeout(() => {
+            const dpr = window.devicePixelRatio || 1;
+            const cssWidth = section.offsetWidth || 600;
+            const cssHeight = 180;
+
+            canvas.style.width  = cssWidth + 'px';
+            canvas.style.height = cssHeight + 'px';
+            canvas.width  = cssWidth * dpr;
+            canvas.height = cssHeight * dpr;
+
             const ctx = canvas.getContext('2d');
-            const containerWidth = chartContainer.offsetWidth || 500;
-            const width = canvas.width = containerWidth * 2;
-            const height = canvas.height = 400;
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-            ctx.clearRect(0, 0, width, height);
-
-            const categories = [
-                { name: 'Airdrop', value: airdrop, color: '#fc8181' },
-                { name: 'Public Sale', value: publicSale, color: '#f6ad55' },
-                { name: 'Team', value: team, color: '#f6e05e' },
-                { name: 'Other', value: other, color: '#90cdf4' },
-                { name: 'Liquidity', value: liquidity, color: '#68d391' }
-            ].filter(cat => cat.value > 0);
-
-            const barWidth = width / (categories.length * 2);
-            const maxValue = Math.max(...categories.map(c => c.value), unlockedPercent);
-            const scale = (height - 80) / maxValue;
-
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            const textColor = isDarkMode ? '#ffffff' : '#2d3748';
+            const gap = 8;
+            const barW = (cssWidth - gap * (categories.length - 1)) / categories.length;
+            const maxVal = Math.max(...categories.map(c => c.value));
+            const availH = cssHeight - 54;
 
             categories.forEach((cat, i) => {
-                const x = (i * 2 + 0.5) * barWidth;
-                const barHeight = cat.value * scale;
-                const y = height - barHeight - 40;
+                const x = i * (barW + gap);
+                const barH = (cat.value / maxVal) * availH;
+                const y = availH - barH;
 
                 ctx.fillStyle = cat.color;
-                ctx.fillRect(x, y, barWidth, barHeight);
+                ctx.fillRect(x, y, barW, barH);
 
-                ctx.fillStyle = textColor;
-                ctx.font = 'bold 20px -apple-system, sans-serif';
+                // Value label above bar
+                ctx.fillStyle = 'oklch(92% 0.008 60)';
+                ctx.font = `700 13px "Barlow Condensed", sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.fillText(cat.name, x + barWidth / 2, height - 15);
+                ctx.fillText(`${cat.value.toFixed(1)}%`, x + barW / 2, y - 6);
 
-                ctx.fillStyle = textColor;
-                ctx.font = 'bold 24px -apple-system, sans-serif';
-                ctx.fillText(`${cat.value.toFixed(1)}%`, x + barWidth / 2, y - 10);
+                // Category label below
+                ctx.fillStyle = 'oklch(55% 0.010 60)';
+                ctx.font = `600 11px "Mada", sans-serif`;
+                ctx.fillText(cat.name, x + barW / 2, availH + 20);
             });
+        }, 80);
+    }
+
+    initChartResize() {
+        let timer;
+        window.addEventListener('resize', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                const section = document.getElementById('chartSection');
+                if (section && section.style.display !== 'none') {
+                    const data = this.getFormData();
+                    if (data) {
+                        this.createUnlockChart(
+                            parseFloat(data.airdrop)    || 0,
+                            parseFloat(data.publicSale) || 0,
+                            parseFloat(data.liquidity)  || 0,
+                            parseFloat(data.team)       || 0,
+                            parseFloat(data.other)      || 0
+                        );
+                    }
+                }
+            }, 200);
+        });
+    }
+
+    // ─── Tooltips ─────────────────────────────────────────────
+
+    initTooltips() {
+        document.addEventListener('mouseover', (e) => {
+            const btn = e.target.closest('.info-btn[data-tooltip]');
+            if (btn) this.showTooltip(btn);
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const btn = e.target.closest('.info-btn[data-tooltip]');
+            if (btn) this.hideTooltip();
+        });
+
+        // Click support for touch devices
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.info-btn[data-tooltip]');
+            if (btn) {
+                e.stopPropagation();
+                if (this.tooltipEl.classList.contains('visible') && this._activeTooltipBtn === btn) {
+                    this.hideTooltip();
+                } else {
+                    this.showTooltip(btn);
+                }
+            } else {
+                this.hideTooltip();
+            }
+        });
+    }
+
+    showTooltip(btn) {
+        clearTimeout(this._tooltipHideTimer);
+        this._activeTooltipBtn = btn;
+        const text = btn.getAttribute('data-tooltip');
+        if (!text) return;
+
+        this.tooltipEl.textContent = text;
+
+        // Position anchored to button — place it, then make visible
+        const btnRect = btn.getBoundingClientRect();
+
+        // Start above the button; will flip below if too close to top
+        let top  = btnRect.top + window.scrollY - 8;
+        let left = btnRect.left + btnRect.width / 2;
+
+        // Use transform to center horizontally and shift up by 100%
+        this.tooltipEl.style.left = left + 'px';
+        this.tooltipEl.style.top  = top + 'px';
+        this.tooltipEl.style.transform = 'translate(-50%, -100%)';
+        this.tooltipEl.removeAttribute('aria-hidden');
+        this.tooltipEl.classList.add('visible');
+    }
+
+    hideTooltip() {
+        this._tooltipHideTimer = setTimeout(() => {
+            this.tooltipEl.classList.remove('visible');
+            this.tooltipEl.setAttribute('aria-hidden', 'true');
+            this._activeTooltipBtn = null;
         }, 100);
     }
 
-    formatCurrency(value) {
-        if (value >= 1000000000) {
-            return '$' + (value / 1000000000).toFixed(2) + 'B';
-        } else if (value >= 1000000) {
-            return '$' + (value / 1000000).toFixed(2) + 'M';
-        } else if (value >= 1000) {
-            return '$' + (value / 1000).toFixed(2) + 'K';
-        }
-        return '$' + value.toFixed(2);
-    }
+    // ─── Persistence ──────────────────────────────────────────
 
-    formatLargeNumber(value) {
-        if (value >= 1000000000) {
-            return (value / 1000000000).toFixed(2) + 'B';
-        } else if (value >= 1000000) {
-            return (value / 1000000).toFixed(2) + 'M';
-        } else if (value >= 1000) {
-            return (value / 1000).toFixed(2) + 'K';
-        }
-        return value.toFixed(0);
-    }
-
-    // Save/Share/Export functions
     saveCalculation() {
-        const data = this.getFormData();
-        localStorage.setItem('tge-calculator-data', JSON.stringify(data));
-        this.showToast('✅ Calculation saved!');
+        localStorage.setItem('tge-calc-save', JSON.stringify(this.getFormData()));
+        this.showToast('Saved');
     }
 
     autoSave() {
-        const data = this.getFormData();
-        localStorage.setItem('tge-calculator-autosave', JSON.stringify(data));
+        localStorage.setItem('tge-calc-autosave', JSON.stringify(this.getFormData()));
     }
 
     loadSavedData() {
-        const saved = localStorage.getItem('tge-calculator-autosave');
-        if (saved) {
-            try {
-                const data = JSON.parse(saved);
-                this.populateForm(data);
-            } catch (e) {
-                console.error('Failed to load saved data:', e);
-            }
-        }
+        const saved = localStorage.getItem('tge-calc-autosave');
+        if (!saved) return;
+        try {
+            this.populateForm(JSON.parse(saved));
+        } catch (_) {}
     }
 
     shareCalculation() {
         const data = this.getFormData();
         const params = new URLSearchParams();
-
-        Object.keys(data).forEach(key => {
-            if (data[key]) {
-                params.append(key, data[key]);
-            }
-        });
-
-        const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+        Object.entries(data).forEach(([k, v]) => { if (v) params.set(k, v); });
+        const url = `${location.origin}${location.pathname}?${params}`;
 
         navigator.clipboard.writeText(url).then(() => {
-            this.showToast('📋 Link copied to clipboard!');
+            this.showToast('Link copied');
         }).catch(() => {
             prompt('Share this URL:', url);
         });
     }
 
     shareOnX() {
-        const projectName = document.getElementById('projectName').value || 'this project';
-        const rating = document.getElementById('scoreBadge').textContent;
-        const dollarAmount = document.getElementById('dollarAmount').textContent;
+        const name    = document.getElementById('projectName').value || 'this project';
+        const rating  = document.getElementById('verdictRating').textContent;
+        const sell    = document.getElementById('dollarAmount').textContent;
 
-        const tweetText = `Just analyzed ${projectName}'s TGE selling pressure using the TGE Calculator!\n\n` +
-            `Pressure Rating: ${rating}\n` +
-            `Potential Sell Pressure: ${dollarAmount}\n\n` +
-            `Check your project's tokenomics: ${window.location.href}`;
-
-        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-        window.open(twitterUrl, '_blank', 'width=550,height=420');
+        const text = `Analyzed ${name}'s TGE selling pressure\n\nVerdict: ${rating}\nSell pressure: ${sell}\n\n${location.href}`;
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'width=550,height=420');
     }
 
-    async exportToPNG() {
-        // For this feature to work, we'd need html2canvas library
-        // For now, show a message that it requires the library
-        this.showToast('📸 Export feature requires html2canvas library. Opening print dialog...');
-        setTimeout(() => {
-            window.print();
-        }, 1000);
+    exportToPNG() {
+        this.showToast('Opening print dialog…');
+        setTimeout(() => window.print(), 800);
     }
 
-    // Comparison mode
+    // ─── Comparison ───────────────────────────────────────────
+
     addToComparison() {
-        const data = this.getFormData();
-        const calculation = {
-            ...data,
-            timestamp: Date.now(),
-            rating: document.getElementById('scoreBadge').textContent,
-            dollarAmount: document.getElementById('dollarAmount').textContent
-        };
-
-        this.savedCalculations.push(calculation);
-        if (this.savedCalculations.length > 3) {
-            this.savedCalculations.shift(); // Keep only last 3
-        }
-
-        localStorage.setItem('tge-calculator-comparisons', JSON.stringify(this.savedCalculations));
-        this.renderComparisons();
-        this.showToast('➕ Added to comparison!');
-    }
-
-    loadComparisons() {
-        const saved = localStorage.getItem('tge-calculator-comparisons');
-        return saved ? JSON.parse(saved) : [];
-    }
-
-    renderComparisons() {
-        const container = document.getElementById('comparisonContainer');
-        const grid = document.getElementById('comparisonGrid');
-
-        if (this.savedCalculations.length === 0) {
-            container.classList.remove('show');
+        const rating = document.getElementById('verdictRating').textContent;
+        if (!rating || rating === '—') {
+            this.showToast('Run analysis first');
             return;
         }
 
-        container.classList.add('show');
+        const data = {
+            ...this.getFormData(),
+            rating,
+            sellPressure: document.getElementById('dollarAmount').textContent,
+            ts: Date.now()
+        };
+
+        this.savedCalculations.push(data);
+        if (this.savedCalculations.length > 3) this.savedCalculations.shift();
+
+        localStorage.setItem('tge-calc-comparisons', JSON.stringify(this.savedCalculations));
+        this.renderComparisons();
+        this.showToast('Added to comparison');
+    }
+
+    loadComparisons() {
+        try {
+            return JSON.parse(localStorage.getItem('tge-calc-comparisons') || '[]');
+        } catch (_) { return []; }
+    }
+
+    renderComparisons() {
+        const section = document.getElementById('comparisonSection');
+        const grid    = document.getElementById('comparisonGrid');
+        const count   = document.getElementById('comparisonCount');
+
+        if (this.savedCalculations.length === 0) {
+            section.classList.remove('show');
+            return;
+        }
+
+        section.classList.add('show');
+        count.textContent = `${this.savedCalculations.length} / 3`;
         grid.innerHTML = '';
 
-        this.savedCalculations.forEach((calc, index) => {
+        this.savedCalculations.forEach((calc, i) => {
+            const ratingClass = (calc.rating || '').toLowerCase();
             const card = document.createElement('div');
             card.className = 'comparison-card';
             card.innerHTML = `
-                <button class="comparison-remove" onclick="calculator.removeComparison(${index})">×</button>
-                <div class="comparison-card-title">${calc.projectName || 'Project ' + (index + 1)}</div>
-                <div class="comparison-metric">
-                    <span class="comparison-metric-label">Rating:</span>
-                    <span class="comparison-metric-value">${calc.rating}</span>
+                <button class="comparison-remove" onclick="calculator.removeComparison(${i})" aria-label="Remove comparison">×</button>
+                <div class="comparison-card-name">${calc.projectName || `Project ${i + 1}`}</div>
+                <div class="comparison-card-rating ${ratingClass}">${calc.rating}</div>
+                <div class="comparison-stat">
+                    <span>Sell pressure</span>
+                    <span class="comparison-stat-val">${calc.sellPressure}</span>
                 </div>
-                <div class="comparison-metric">
-                    <span class="comparison-metric-label">Sell Pressure:</span>
-                    <span class="comparison-metric-value">${calc.dollarAmount}</span>
+                <div class="comparison-stat">
+                    <span>% Unlocked</span>
+                    <span class="comparison-stat-val">${calc.unlockedPercent}%</span>
                 </div>
-                <div class="comparison-metric">
-                    <span class="comparison-metric-label">Unlocked:</span>
-                    <span class="comparison-metric-value">${calc.unlockedPercent}%</span>
+                <div class="comparison-stat">
+                    <span>FDV</span>
+                    <span class="comparison-stat-val">${this.formatCurrency(parseFloat(calc.fdv) || 0)}</span>
                 </div>
             `;
             grid.appendChild(card);
         });
     }
 
-    removeComparison(index) {
-        this.savedCalculations.splice(index, 1);
-        localStorage.setItem('tge-calculator-comparisons', JSON.stringify(this.savedCalculations));
+    removeComparison(i) {
+        this.savedCalculations.splice(i, 1);
+        localStorage.setItem('tge-calc-comparisons', JSON.stringify(this.savedCalculations));
         this.renderComparisons();
-        this.showToast('🗑️ Removed from comparison');
     }
 
+    // ─── URL loading ──────────────────────────────────────────
+
     loadFromURL() {
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(location.search);
+        if (!params.size) return;
         const data = {};
-
-        params.forEach((value, key) => {
-            data[key] = value;
-        });
-
-        if (Object.keys(data).length > 0) {
-            this.populateForm(data);
-            if (data.totalSupply && data.fdv && data.unlockedPercent) {
-                setTimeout(() => {
-                    if (this.validateForm()) {
-                        this.calculatePressure();
-                    }
-                }, 100);
-            }
+        params.forEach((v, k) => { data[k] = v; });
+        this.populateForm(data);
+        if (data.totalSupply && data.fdv && data.unlockedPercent) {
+            setTimeout(() => {
+                if (this.validateForm()) this.calculatePressure();
+            }, 100);
         }
     }
 
+    // ─── Form helpers ─────────────────────────────────────────
+
     getFormData() {
         return {
-            projectName: document.getElementById('projectName').value,
-            totalSupply: document.getElementById('totalSupply').value,
-            fdv: document.getElementById('fdv').value,
-            unlockedPercent: document.getElementById('unlockedPercent').value,
-            expectedPrice: document.getElementById('expectedPrice').value,
-            airdrop: document.getElementById('airdrop').value,
-            publicSale: document.getElementById('publicSale').value,
-            liquidity: document.getElementById('liquidity').value,
-            team: document.getElementById('team').value,
-            other: document.getElementById('other').value
+            projectName:    document.getElementById('projectName').value,
+            totalSupply:    document.getElementById('totalSupply').value,
+            fdv:            document.getElementById('fdv').value,
+            unlockedPercent:document.getElementById('unlockedPercent').value,
+            expectedPrice:  document.getElementById('expectedPrice').value,
+            airdrop:        document.getElementById('airdrop').value,
+            publicSale:     document.getElementById('publicSale').value,
+            liquidity:      document.getElementById('liquidity').value,
+            team:           document.getElementById('team').value,
+            other:          document.getElementById('other').value
         };
     }
 
     populateForm(data) {
-        Object.keys(data).forEach(key => {
-            const input = document.getElementById(key);
-            if (input && data[key]) {
-                input.value = data[key];
-            }
+        Object.entries(data).forEach(([k, v]) => {
+            const el = document.getElementById(k);
+            if (el && v !== undefined && v !== null) el.value = v;
         });
 
-        if (data.airdrop || data.publicSale || data.liquidity || data.team || data.other) {
-            if (!this.advancedSection.classList.contains('show')) {
-                this.toggleAdvanced();
-            }
+        const hasAdvanced = ['airdrop','publicSale','liquidity','team','other'].some(k => data[k]);
+        if (hasAdvanced && !this.advancedSection.classList.contains('open')) {
+            this.toggleAdvanced();
         }
     }
 
     clearForm() {
-        if (confirm('Clear all fields and results?')) {
-            this.form.reset();
-            this.results.classList.remove('show');
-            document.getElementById('actionButtons').classList.remove('show');
-            localStorage.removeItem('tge-calculator-autosave');
+        if (!confirm('Clear all inputs and results?')) return;
+        this.form.reset();
 
-            const inputs = this.form.querySelectorAll('input');
-            inputs.forEach(input => {
-                input.classList.remove('error');
-                const errorEl = input.parentElement.querySelector('.input-error');
-                if (errorEl) {
-                    errorEl.classList.remove('show');
-                }
-            });
+        // Hide results
+        const el = this.resultsSection;
+        el.classList.remove('revealed');
+        setTimeout(() => {
+            el.classList.remove('visible');
+            el.style.display = 'none';
+        }, 400);
 
-            this.showToast('🗑️ Form cleared');
-        }
+        // Clear errors
+        this.form.querySelectorAll('input').forEach(input => {
+            input.classList.remove('error');
+            const err = document.getElementById(input.id + 'Error');
+            if (err) err.classList.remove('show');
+        });
+
+        document.getElementById('verdictBlock').className = 'verdict-block';
+        localStorage.removeItem('tge-calc-autosave');
+        this.showToast('Cleared');
     }
 
-    showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.classList.add('show');
+    // ─── Utilities ────────────────────────────────────────────
 
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
+    formatCurrency(value) {
+        if (value >= 1e9) return '$' + (value / 1e9).toFixed(2) + 'B';
+        if (value >= 1e6) return '$' + (value / 1e6).toFixed(2) + 'M';
+        if (value >= 1e3) return '$' + (value / 1e3).toFixed(1) + 'K';
+        return '$' + value.toFixed(2);
+    }
+
+    formatLargeNumber(value) {
+        if (value >= 1e9) return (value / 1e9).toFixed(2) + 'B';
+        if (value >= 1e6) return (value / 1e6).toFixed(2) + 'M';
+        if (value >= 1e3) return (value / 1e3).toFixed(1) + 'K';
+        return value.toFixed(0);
+    }
+
+    showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
     }
 }
 
-// Initialize calculator when DOM is ready
+// Boot
 let calculator;
 document.addEventListener('DOMContentLoaded', () => {
     calculator = new TGECalculator();
