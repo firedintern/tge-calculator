@@ -495,6 +495,7 @@ class TGECalculator {
     }
 
     loadSavedData() {
+        if (new URLSearchParams(location.search).size) return; // URL params take priority
         const saved = localStorage.getItem('tge-calc-autosave');
         if (!saved) return;
         try {
